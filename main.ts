@@ -10,14 +10,28 @@
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
 // In the grader's container the output directory defaults to /output.
 
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const sourcePath = join(here, 'entry.png');
+const outputPath = join(outDir, 'entry.png');
 
 mkdirSync(outDir, { recursive: true });
-copyFileSync(join(here, 'entry.png'), join(outDir, 'entry.png'));
+copyFileSync(sourcePath, outputPath);
 
-console.log(`news-image-20261125: wrote ${join(outDir, 'entry.png')}`);
+// Verify the copy landed whole: the written file must be exactly as large
+// as the source artwork. A short or truncated copy would hand the judge a
+// broken image, so fail loudly instead of reporting success.
+const sourceBytes = statSync(sourcePath).size;
+const writtenBytes = statSync(outputPath).size;
+if (writtenBytes !== sourceBytes) {
+  console.error(
+    `news-image-20261125: copy verification failed: ${outputPath} is ${writtenBytes} bytes, source ${sourcePath} is ${sourceBytes} bytes`,
+  );
+  process.exit(1);
+}
+
+console.log(`news-image-20261125: wrote ${outputPath} (${writtenBytes} bytes, verified against source)`);
